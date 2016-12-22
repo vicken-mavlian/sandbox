@@ -1,3 +1,5 @@
+# some comment
+
 import bpy
 from bpy_extras.io_utils import ExportHelper
 import sys
