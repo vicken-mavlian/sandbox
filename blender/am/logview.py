@@ -51,7 +51,7 @@ class LogBrowser(QtWidgets.QWidget):
         self.model = LogModel()
         self.model.setColumnCount(4)
         # XXX more columns: version, is_published
-        self.model.setHorizontalHeaderLabels(["version", "date", "user", "comment", "published"])
+        self.model.setHorizontalHeaderLabels(["version", "date", "user", "comment", "published", "thumbnail"])
 
         self.proxymodel = LogProxyModel()#QtCore.QSortFilterProxyModel()
         self.proxymodel.setDynamicSortFilter(True)

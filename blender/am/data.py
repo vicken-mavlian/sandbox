@@ -1,6 +1,10 @@
 from collections import namedtuple
 import random
 import time
+import os
+
+root_path = os.path.dirname(__file__)
+
 
 departments = ['model', 'surface', 'rig']
 categories= ['prop', 'set', 'character']
@@ -10,9 +14,34 @@ users = ['vicken.mavlian', 'cristian.kovacs', 'dan.murray']
 assets = []
 asset_revisions = []
 
-Asset = namedtuple('Asset', 'name thumbnail category')
-Revision = namedtuple('Revision', 'version date user comment publish')
+blend_datablocks = ['actions', 'groups', 'materials']
+
+Blend = namedtuple('Blend', 'filename datablocks')
+Datablock = namedtuple('Datablock', 'name datas')
+Data = namedtuple('Data', 'name')
+
+Asset = namedtuple('Asset', 'name category')
+Revision = namedtuple('Revision', 'version date user comment publish thumbnail blend')
 AssetRevision = namedtuple('AssetRevision', 'asset department revisions')
+
+
+def new_blend():
+    filenames = ['wip.blend', 'new.blend', 'backup.blend']
+    filename = random.choice(filenames)
+
+    datablocks = []
+    for blend_datablock in blend_datablocks: # Group, Actions, Materials
+        datas = []
+        for i in range(random.randint(1,5)):
+            name = blend_datablock + '.' + str(i).zfill(3)
+            data = Data(name=name)
+            datas.append(data)
+
+        datablock = Datablock(name=blend_datablock, datas=datas)
+        datablocks.append(datablock)
+
+    blend = Blend(filename=filename, datablocks=datablocks)
+    return blend
 
 def regenerate():
     global assets
@@ -21,7 +50,7 @@ def regenerate():
     asset_revisions = []
 
     for name in asset_names:
-        asset = Asset(name=name, thumbnail=name+'.png', category=random.choice(categories))
+        asset = Asset(name=name, category=random.choice(categories))
         assets.append(asset)
 
     for asset in assets:
@@ -32,13 +61,16 @@ def regenerate():
             start = 1480000000
             end = int(time.time())
             for version in ("%03d" % i for i in range(random.randint(1,10))):
+                blend = new_blend()
+
                 rev_time = random.randint(start, end)
-                start = rand_time
+                start = rev_time
                 date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(rev_time))
                 user = random.choice(users)
                 comment = random.choice(comment_text)
                 publish = str(random.choice(['True', 'False']))
-                revision = Revision(version=version, date=date, user=user, comment=comment, publish=publish)
+                thumbnail = asset.name + '.png'
+                revision = Revision(version=version, date=date, user=user, comment=comment, publish=publish, thumbnail=thumbnail, blend=blend)
                 revisions.append(revision)
 
             asset_revision = AssetRevision(asset=asset, department=department, revisions=revisions)
