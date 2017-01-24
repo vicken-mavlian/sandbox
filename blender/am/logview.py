@@ -2,28 +2,9 @@ from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 
+import filterwidget
+
 import os, sys
-
-####### Filter #########
-class FilterEdit(QtWidgets.QLineEdit):
-    def __init__(self):
-        super(FilterEdit, self).__init__()
-        self.setPlaceholderText("Filter")
-
-class LogFilter(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super(LogFilter, self).__init__(parent=parent)
-        self.publish_checkbox = QtWidgets.QCheckBox('published only')
-        self.filter_edit = FilterEdit()
-
-        layout = QtWidgets.QHBoxLayout()
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.publish_checkbox)
-        layout.addWidget(self.filter_edit)
-        self.setLayout(layout)
-
-##### End Filter ########
 
 class LogView(QtWidgets.QTreeView):
     def __init__(self, parent=None):
@@ -49,7 +30,7 @@ class LogProxyModel(QtCore.QSortFilterProxyModel):
         model = self.sourceModel()
 
         index = model.index(sourceRow, model.PUBLISHED, sourceParent)
-        data = self.sourceModel().data(index)
+        data = self.sourceModel().data(index) == 'True'
 
         if self.publish_filter:
             if not data:
@@ -61,7 +42,7 @@ class LogProxyModel(QtCore.QSortFilterProxyModel):
         return super(LogProxyModel, self).filterAcceptsRow(sourceRow, sourceParent)
 
 class LogModel(QtGui.QStandardItemModel):
-    DATE, USER, COMMENT, PUBLISHED = range(4)
+    VERSION, DATE, USER, COMMENT, PUBLISHED, THUMBNAIL = range(6)
 
 class LogBrowser(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -70,38 +51,43 @@ class LogBrowser(QtWidgets.QWidget):
         self.model = LogModel()
         self.model.setColumnCount(4)
         # XXX more columns: version, is_published
-        self.model.setHorizontalHeaderLabels(["date", "user", "comment", "published"])
+        self.model.setHorizontalHeaderLabels(["version", "date", "user", "comment", "published"])
 
         self.proxymodel = LogProxyModel()#QtCore.QSortFilterProxyModel()
         self.proxymodel.setDynamicSortFilter(True)
         self.proxymodel.setSourceModel(self.model)
         self.proxymodel.setFilterKeyColumn(-1)
 
-        self.log_filter = LogFilter()
+        self.publish_checkbox = QtWidgets.QCheckBox('published only')
+        self.log_filter = filterwidget.FilterWidget()
         self.log_view = LogView()
 
         self.log_view.setModel(self.proxymodel)
         #self.log_view.setColumnHidden(self.model.PUBLISHED, True)
 
+        filter_layout = QtWidgets.QHBoxLayout()
+        filter_layout.addWidget(self.publish_checkbox)
+        filter_layout.addWidget(self.log_filter)
+
         layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.log_filter)
+        layout.addLayout(filter_layout)
         layout.addWidget(self.log_view)
         self.setLayout(layout)
 
-        self.log_filter.publish_checkbox.toggled.connect(self.filterChanged)
+        self.publish_checkbox.toggled.connect(self.filterChanged)
         self.log_filter.filter_edit.textChanged.connect(self.filterChanged)
 
     def filterChanged(self, event):
-        publish_only = self.log_filter.publish_checkbox.isChecked()
+        publish_only = self.publish_checkbox.isChecked()
+
         text = self.log_filter.filter_edit.text()
         syntax = QtCore.QRegExp.PatternSyntax(QtCore.QRegExp.Wildcard)
         case_sensitivity = QtCore.Qt.CaseSensitive
         regExp = QtCore.QRegExp(text, case_sensitivity, syntax)
 
         self.proxymodel.setFilterRegExp(regExp)
-
         self.proxymodel.setPublishFilter(publish_only)
 
 class LogViewer(QtWidgets.QMainWindow):
