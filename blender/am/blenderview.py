@@ -11,10 +11,11 @@ import os
 class BlenderView(QtWidgets.QTreeView):
     def __init__(self, parent=None):
         super(BlenderView, self).__init__(parent=parent)
-        self.setRootIsDecorated(False)
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True)
         self.setEditTriggers(self.NoEditTriggers)
+        self.header().setSortIndicator(0, QtCore.Qt.AscendingOrder)
+        self.setHeaderHidden(True)
 
 class BlenderProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self):
@@ -22,22 +23,20 @@ class BlenderProxyModel(QtCore.QSortFilterProxyModel):
         self.publish_filter = False
 
     def filterAcceptsRow(self, sourceRow, sourceParent):
-        # model = self.sourceModel()
-        # index = model.index(sourceRow, model.PUBLISHED, sourceParent)
-        # data = self.sourceModel().data(index)
-        #
-        # if False:
-        #     if not data:
-        #         index = model.index(sourceRow, model.COMMENT, sourceParent)
-        #         data = model.data(index)
-        #
-        #         return False
+
+        model = self.sourceModel()
+
+        # if there's no parent, that means it's a data "category" item. so accept the row
+        index = model.index(sourceRow, 0, sourceParent)
+        item = model.itemFromIndex(index)
+        if not item.parent():
+            return True
 
         return super(BlenderProxyModel, self).filterAcceptsRow(sourceRow, sourceParent)
 
 
 class BlenderModel(QtGui.QStandardItemModel):
-    pass
+    DATABLOCKS = range(1)
 
 
 class AssetSummary(QtWidgets.QWidget):
@@ -50,7 +49,6 @@ class AssetSummary(QtWidgets.QWidget):
 
         self.comment_box = QtWidgets.QTextEdit()
         self.comment_box.setReadOnly(True)
-
 
         layout = QtWidgets.QHBoxLayout()
         layout.setSpacing(0)
@@ -81,11 +79,14 @@ class BlenderBrowser(QtWidgets.QWidget):
         self.blender_file = BlenderFile()
 
         self.model = BlenderModel()
+        self.model.setColumnCount(1)
+        self.model.setHorizontalHeaderLabels(['Datablock'])
 
         self.proxymodel = BlenderProxyModel()
         self.proxymodel.setDynamicSortFilter(True)
         self.proxymodel.setSourceModel(self.model)
         self.proxymodel.setFilterKeyColumn(-1)
+        self.proxymodel.setSourceModel(self.model)
 
         self.blender_file.blender_view.setModel(self.proxymodel)
 
@@ -117,9 +118,11 @@ class BlenderBrowser(QtWidgets.QWidget):
         self.asset_summary.comment_box.setText(comment)
 
     def filterChanged(self, event):
-        text = self.log_filter.filter_edit.text()
+        text = self.blender_file.blender_filter.filter_edit.text()
         syntax = QtCore.QRegExp.PatternSyntax(QtCore.QRegExp.Wildcard)
         case_sensitivity = QtCore.Qt.CaseSensitive
         regExp = QtCore.QRegExp(text, case_sensitivity, syntax)
 
         self.proxymodel.setFilterRegExp(regExp)
+
+        self.blender_file.blender_view.expandAll()

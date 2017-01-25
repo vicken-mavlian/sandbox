@@ -5,113 +5,100 @@ from PyQt5 import QtWidgets
 import data
 
 import filterwidget
+
+import assetsview
+import shotsview
 import logview
 import blenderview
 
-
-class AssetsModel(QtGui.QStandardItemModel):
-    def __init__(self):
-        super(AssetsModel, self).__init__()
-
-    def repopulate(self):
-        self.beginResetModel()
-        self.clear()
-
-        root = self.invisibleRootItem()
-        for obj in []:
-            item = QtGui.QStandardItem(obj.name)
-            root.appendRow(item)
-
-        self.endResetModel()
-
-    def dataChanged(self, top_left, bottom_right, roles=[]):
-        return super(AssetsModel, self).__init__()
-
-
-class AssetsView(QtWidgets.QTreeView):
-    def __init__(self, parent=None):
-        super(AssetsView, self).__init__(parent)
-        self.setHeaderHidden(True)
-        self.setEditTriggers(self.NoEditTriggers)
-        self.setAlternatingRowColors(True)
-
-
-class AssetsProxyModel(QtCore.QSortFilterProxyModel):
-    def __init__(self):
-        super(AssetsProxyModel, self).__init__()
-
-    def filterAcceptsRow(self, sourceRow, sourceParent):
-        model = self.sourceModel()
-
-        # if there's no parent, that means it's a "category" item, not an asset. so accept the row
-        index = model.index(sourceRow, 0, sourceParent)
-        item = model.itemFromIndex(index)
-        if not item.parent():
-            return True
-
-        return super(AssetsProxyModel, self).filterAcceptsRow(sourceRow, sourceParent)
-
-
-class AssetsBrowser(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super(AssetsBrowser, self).__init__(parent)
-
-        self.departments = QtWidgets.QComboBox()
-        self.departments.addItems(data.departments)
-
-        self.filter_widget = filterwidget.FilterWidget()
-        self.assets_view = AssetsView()
-
-        layout = QtWidgets.QVBoxLayout()
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.departments)
-        layout.addWidget(self.filter_widget)
-        layout.addWidget(self.assets_view)
-
-        self.setLayout(layout)
-
-        self.filter_widget.filter_edit.textChanged.connect(self.filterChanged)
-        self.departments.currentIndexChanged.connect(self.departmentChanged)
-
-    def departmentChanged(self, event):
-        pass
-
-    def filterChanged(self, event):
-        # TODO: Hack, the model may not be a proxy model. Probably requires refactoring
-        text = self.filter_widget.filter_edit.text()
-        syntax = QtCore.QRegExp.PatternSyntax(QtCore.QRegExp.Wildcard)
-        case_sensitivity = QtCore.Qt.CaseSensitive
-        regExp = QtCore.QRegExp(text, case_sensitivity, syntax)
-
-        proxymodel = self.assets_view.model()
-        proxymodel.setFilterRegExp(regExp)
-        self.assets_view.expandAll()
 
 class AMAssetInfo(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(AMAssetInfo, self).__init__(parent)
 
-        self.assets_browser = AssetsBrowser()
-        self.assets_model = AssetsModel()
-        self.assets_proxy_model = AssetsProxyModel()
+        self.assets_browser = assetsview.AssetsBrowser()
+        self.assets_model = assetsview.AssetsModel()
+        self.assets_proxy_model = assetsview.AssetsProxyModel()
         self.assets_proxy_model.setSourceModel(self.assets_model)
 
         self.assets_browser.assets_view.setModel(self.assets_proxy_model)
-        self.assets_browser.assets_view.selectionModel().currentChanged.connect(self.update_logs)
-        self.assets_browser.departments.currentIndexChanged.connect(self.update_logs)
+        self.assets_browser.assets_view.selectionModel().currentChanged.connect(self.update_asset_logs)
+        self.assets_browser.departments.currentIndexChanged.connect(self.update_asset_logs)
+
+        self.shots_browser = shotsview.ShotsBrowser()
+        self.shots_model = shotsview.ShotsModel()
+        self.shots_proxy_model = shotsview.ShotsProxyModel()
+        self.shots_proxy_model.setSourceModel(self.shots_model)
+
+        self.shots_browser.shots_view.setModel(self.shots_proxy_model)
+        self.shots_browser.shots_view.selectionModel().currentChanged.connect(self.update_shot_logs)
+        self.shots_browser.departments.currentIndexChanged.connect(self.update_shot_logs)
+
+        self.shot_assets_tab = QtWidgets.QTabWidget()
+        self.shot_assets_tab.addTab(self.assets_browser, "assets")
+        self.shot_assets_tab.addTab(self.shots_browser, "shots")
 
         self.log_browser = logview.LogBrowser()
+        splitter = QtWidgets.QSplitter()
+        splitter.setOrientation(QtCore.Qt.Vertical)
+        splitter.addWidget(self.shot_assets_tab)
+        splitter.addWidget(self.log_browser)
 
         layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.assets_browser)
-        layout.addWidget(self.log_browser)
+        layout.addWidget(splitter)
 
         self.setLayout(layout)
 
-    def update_logs(self, event):
+    def update_shot_logs(self, event):
+        department = self.shots_browser.departments.currentText()
+
+        # TODO Hack, it may not be a proxy model
+        asset_model = self.shots_browser.shots_view.model().sourceModel()
+
+        index = self.shots_browser.shots_view.selectionModel().currentIndex()
+        index = self.shots_browser.shots_view.model().mapToSource(index)
+        item = asset_model.itemFromIndex(index)
+        if not item:
+            return
+
+        sequence_name = item.parent().text()
+        shot_name = item.text()
+
+        # clear the revision logs model by setting row count to 0
+        log_model = self.log_browser.model
+        log_model.setRowCount(0)
+
+        for sequence in data.shots:
+            if sequence.name == sequence_name:
+                for shot in sequence.shots:
+                    if shot.name == shot_name:
+                        for rev in shot.revisions:
+                            version = rev.version
+                            date = rev.date
+                            user = rev.user
+                            comment = rev.comment
+                            published = rev.publish
+                            thumbnail= rev.thumbnail
+
+                            import os
+                            if published == 'True':
+                                icon_path = os.path.join(data.root_path, 'resources', 'rev_publish.png')
+                            else:
+                                icon_path = os.path.join(data.root_path, 'resources', 'rev_wip.png')
+                            icon = QtGui.QIcon(icon_path)
+
+                            log_model.insertRow(0)
+                            log_model.setData(log_model.index(0, log_model.VERSION), version)
+                            log_model.setData(log_model.index(0, log_model.VERSION), icon, role=QtCore.Qt.DecorationRole)
+                            log_model.setData(log_model.index(0, log_model.DATE), date)
+                            log_model.setData(log_model.index(0, log_model.USER), user)
+                            log_model.setData(log_model.index(0, log_model.COMMENT), comment)
+                            log_model.setData(log_model.index(0, log_model.PUBLISHED), published)
+                            log_model.setData(log_model.index(0, log_model.THUMBNAIL), thumbnail)
+
+    def update_asset_logs(self, event):
         department = self.assets_browser.departments.currentText()
 
         # TODO Hack, it may not be a proxy model
@@ -119,7 +106,11 @@ class AMAssetInfo(QtWidgets.QWidget):
 
         index = self.assets_browser.assets_view.selectionModel().currentIndex()
         index = self.assets_browser.assets_view.model().mapToSource(index)
-        asset_name = asset_model.itemFromIndex(index).text()
+        item = asset_model.itemFromIndex(index)
+        if not item:
+            return
+
+        asset_name = item.text()
 
         # clear the revision logs model by setting row count to 0
         log_model = self.log_browser.model
@@ -137,8 +128,16 @@ class AMAssetInfo(QtWidgets.QWidget):
                     published = rev.publish
                     thumbnail= rev.thumbnail
 
+                    import os
+                    if published == 'True':
+                        icon_path = os.path.join(data.root_path, 'resources', 'rev_publish.png')
+                    else:
+                        icon_path = os.path.join(data.root_path, 'resources', 'rev_wip.png')
+                    icon = QtGui.QIcon(icon_path)
+
                     log_model.insertRow(0)
                     log_model.setData(log_model.index(0, log_model.VERSION), version)
+                    log_model.setData(log_model.index(0, log_model.VERSION), icon, role=QtCore.Qt.DecorationRole)
                     log_model.setData(log_model.index(0, log_model.DATE), date)
                     log_model.setData(log_model.index(0, log_model.USER), user)
                     log_model.setData(log_model.index(0, log_model.COMMENT), comment)
@@ -191,6 +190,8 @@ class MainWidget(QtWidgets.QWidget):
 
         self.blender_browser.setRevision(comment, thumbnail)
 
+        # TODO all this below should be moved to BlenderBrowser class
+
         model = self.blender_browser.model
         model.setRowCount(0)
 
@@ -200,9 +201,17 @@ class MainWidget(QtWidgets.QWidget):
             if correct_asset and correct_department:
                 for rev in asset_revision.revisions:
                     if rev.version == version:
-                        model.insertRow(0)
-                        model.setData(model.index(0, 0), rev.blend.datablocks[0].name)
+                        for datablock in rev.blend.datablocks:
+                            model.insertRow(0)
+                            model.setData(model.index(0, 0), datablock.name)
+                            item = model.item(0,0)
 
+                            for data_object in datablock.datas:
+                                data_item = QtGui.QStandardItem()
+                                data_item.setText(data_object.name)
+                                item.appendRow(data_item)
+
+        self.blender_browser.blender_file.blender_view.expandAll()
 
 class AMMainWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
@@ -234,10 +243,24 @@ def populate_assets_model(model):
         section_item = model.findItems(category)[0]
         section_item.appendRow(item)
 
+def populate_shots_model(model):
+    model.setRowCount(0)
+
+    root = model.invisibleRootItem()
+
+    for sequence in data.shots:
+        seq_item = QtGui.QStandardItem()
+        seq_item.setText(sequence.name)
+        root.appendRow(seq_item)
+
+        for shot in sequence.shots:
+            shot_item = QtGui.QStandardItem()
+            shot_item.setText(shot.name)
+
+            seq_item.appendRow(shot_item)
 
 if __name__ == "__main__":
     import sys
-
     data.regenerate()
 
     if not QtWidgets.qApp.instance():
@@ -248,6 +271,27 @@ if __name__ == "__main__":
         populate_assets_model(asset_model)
         asset_manager.main_widget.asset_info.assets_browser.assets_view.expandAll()
 
+        shots_model = asset_manager.main_widget.asset_info.shots_model
+        populate_shots_model(shots_model)
+        asset_manager.main_widget.asset_info.shots_browser.shots_view.expandAll()
+
+
         asset_manager.show()
         sys.exit(app.exec_())
+
+
+import sys
+import importlib
+importlib.reload(data)
+data.regenerate()
+
+if not QtWidgets.qApp.instance():
+    app = QtWidgets.QApplication(sys.argv)
+asset_manager = AMMainWindow()
+
+asset_model = asset_manager.main_widget.asset_info.assets_model
+populate_assets_model(asset_model)
+asset_manager.main_widget.asset_info.assets_browser.assets_view.expandAll()
+
+asset_manager.show()
 

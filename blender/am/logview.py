@@ -13,6 +13,8 @@ class LogView(QtWidgets.QTreeView):
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True)
         self.setEditTriggers(self.NoEditTriggers)
+        self.header().setSortIndicator(0, QtCore.Qt.AscendingOrder)
+        #self.setUniformRowHeights(True)
 
 class LogProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self):
@@ -44,6 +46,14 @@ class LogProxyModel(QtCore.QSortFilterProxyModel):
 class LogModel(QtGui.QStandardItemModel):
     VERSION, DATE, USER, COMMENT, PUBLISHED, THUMBNAIL = range(6)
 
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        # handle SizeHintRole so that multiline items don't expand the row height
+        if role == QtCore.Qt.SizeHintRole:
+            # TODO hardcoded height to 20. Should figure out system default for min size.
+            return QtCore.QSize(0, 20)
+        return super(LogModel, self).data(index, role)
+
+
 class LogBrowser(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(LogBrowser, self).__init__(parent)
@@ -63,11 +73,12 @@ class LogBrowser(QtWidgets.QWidget):
         self.log_view = LogView()
 
         self.log_view.setModel(self.proxymodel)
-        #self.log_view.setColumnHidden(self.model.PUBLISHED, True)
+        self.log_view.setColumnHidden(self.model.PUBLISHED, True)
+        self.log_view.setColumnHidden(self.model.THUMBNAIL, True)
 
         filter_layout = QtWidgets.QHBoxLayout()
-        filter_layout.addWidget(self.publish_checkbox)
         filter_layout.addWidget(self.log_filter)
+        filter_layout.addWidget(self.publish_checkbox)
 
         layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(0)
