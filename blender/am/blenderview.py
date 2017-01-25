@@ -3,6 +3,7 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 
 import filterwidget
+import logview
 
 import data
 
@@ -39,24 +40,38 @@ class BlenderModel(QtGui.QStandardItemModel):
     DATABLOCKS = range(1)
 
 
-class AssetSummary(QtWidgets.QWidget):
+class VersionSummary(QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(AssetSummary, self).__init__(parent)
+        super(VersionSummary, self).__init__(parent)
 
         self.thumbnail = QtWidgets.QLabel()
         self.thumbnail.setScaledContents(True)
         self.thumbnail.setFixedSize(QtCore.QSize(128, 128))
 
+        self.log_browser = logview.LogBrowser()
+
         self.comment_box = QtWidgets.QTextEdit()
         self.comment_box.setReadOnly(True)
+        self.comment_box.setFixedHeight(self.thumbnail.height())
+        self.comment_box.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
-        layout = QtWidgets.QHBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        layout.addWidget(self.thumbnail)
-        layout.addWidget(self.comment_box)
+        summary_layout = QtWidgets.QHBoxLayout()
+        summary_layout.setSpacing(0)
+        summary_layout.setContentsMargins(0, 0, 0, 0)
+
+        summary_layout.addWidget(self.thumbnail)
+        summary_layout.addWidget(self.comment_box)
+        summary_layout.setAlignment(self.thumbnail, QtCore.Qt.AlignCenter)
+
+        layout.addLayout(summary_layout)
+        layout.addWidget(self.log_browser)
+
         self.setLayout(layout)
+
 
 class BlenderFile(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -72,10 +87,11 @@ class BlenderFile(QtWidgets.QWidget):
         layout.addWidget(self.blender_view)
         self.setLayout(layout)
 
+
 class BlenderBrowser(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(BlenderBrowser, self).__init__(parent)
-        self.asset_summary = AssetSummary()
+        self.asset_summary = VersionSummary()
         self.blender_file = BlenderFile()
 
         self.model = BlenderModel()
@@ -110,6 +126,10 @@ class BlenderBrowser(QtWidgets.QWidget):
             image_path = os.path.join(data.root_path, 'resources', thumbnail)
         else:
             image_path = os.path.join(data.root_path, 'resources', 'empty.png')
+
+        if not os.path.isfile(image_path):
+            image_path = os.path.join(data.root_path, 'resources', 'empty.png')
+
 
         image = QtGui.QImage(image_path)
         pixmap = QtGui.QPixmap(image)

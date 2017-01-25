@@ -56,14 +56,14 @@ class ShotsBrowser(QtWidgets.QWidget):
         self.departments.addItems(data.departments)
 
         self.filter_widget = filterwidget.FilterWidget()
-        self.shots_view = ShotsView()
+        self.view = ShotsView()
 
         layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.departments)
         layout.addWidget(self.filter_widget)
-        layout.addWidget(self.shots_view)
+        layout.addWidget(self.view)
 
         self.setLayout(layout)
 
@@ -80,6 +80,6 @@ class ShotsBrowser(QtWidgets.QWidget):
         case_sensitivity = QtCore.Qt.CaseSensitive
         regExp = QtCore.QRegExp(text, case_sensitivity, syntax)
 
-        proxymodel = self.shots_view.model()
+        proxymodel = self.view.model()
         proxymodel.setFilterRegExp(regExp)
-        self.shots_view.expandAll()
+        self.view.expandAll()

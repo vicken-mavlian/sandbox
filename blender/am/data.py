@@ -47,17 +47,21 @@ Blend = namedtuple('Blend', 'filename datablocks')
 Datablock = namedtuple('Datablock', 'name datas')
 Data = namedtuple('Data', 'name')
 
+Revision = namedtuple('Revision', 'version date user comment publish thumbnail blend')
+
 # tables/data fields for assets
 Asset = namedtuple('Asset', 'name category')
-Revision = namedtuple('Revision', 'version date user comment publish thumbnail blend')
 AssetRevision = namedtuple('AssetRevision', 'asset department revisions')
 assets = []
 asset_revisions = []
 
 # tables/data fields for seqs/shots
-Sequence = namedtuple('Sequence', 'name shots')
-Shot = namedtuple('Shot', 'name department revisions')
+#Sequence = namedtuple('Sequence', 'name shots')
+Shot = namedtuple('Shot', 'name sequence')
+ShotRevision = namedtuple('ShotRevision', 'shot department revisions')
+sequences = []
 shots = []
+shot_revisions = []
 
 
 def new_blend():
@@ -113,20 +117,48 @@ def regenerate():
             asset_revisions.append(asset_revision)
 
 
-
+    global sequences
     global shots
+    global shot_revisions
+
+    sequences = []
     shots = []
+    shot_revisions = []
 
-    for i in range(random.randint(1, 20)):
-        seq_name = str(i).zfill(3)
-        seq_shots = []
-        for j in range(random.randint(1, 50)):
-            shot_name = str(j).zfill(4)
-            shot = Shot(name=shot_name)
-            seq_shots.append(shot)
+    seqs = set()
+    for i in sorted(random.sample(range(0,1000, 10), 100)):
+        name = str(i).zfill(3)
+        sequence = random.choice(range(0, 1000, 100))
+        sequence = str(sequence).zfill(3)
+        shot = Shot(name=name, sequence=sequence)
+        shots.append(shot)
+        seqs.add(sequence)
 
-        sequence = Sequence(name=seq_name, shots=seq_shots)
-        shots.append(sequence)
+    sequences = sorted(list(seqs))
+
+    for shot in shots:
+        for department in departments:
+            revisions = []
+
+            # put this time stuff here to make sure each revision is always at a later date
+            start = 1480000000
+            end = int(time.time())
+            for version in ("%03d" % i for i in range(random.randint(1,10))):
+                blend = new_blend()
+
+                rev_time = random.randint(start, end)
+                start = rev_time
+                date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(rev_time))
+                user = random.choice(users)
+                comment = random.choice(comment_text)
+                publish = str(random.choice(['True', 'False']))
+                thumbnail = shot.name+'.png'
+                revision = Revision(version=version, date=date, user=user, comment=comment, publish=publish,
+                                    thumbnail=thumbnail, blend=blend)
+                revisions.append(revision)
+
+            shot_revision = ShotRevision(shot=shot, department=department, revisions=revisions)
+            shot_revisions.append(shot_revision)
 
 if __name__ == "__main__":
     pass
