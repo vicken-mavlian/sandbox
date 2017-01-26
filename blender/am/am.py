@@ -235,34 +235,12 @@ class AMMainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Asset Management")
 
 
-def populate_assets_model(model):
+def populate_model(model, asset_data):
     model.setRowCount(0)
 
     root = model.invisibleRootItem()
 
-    for asset in data.assets:
-        section = asset.section
-        name = asset.name
-
-        section_items = model.findItems(section)
-        if section_items:
-            section_item = section_items[0]
-        else:
-            section_item = QtGui.QStandardItem()
-            section_item.setText(section)
-            root.appendRow(section_item)
-
-        item = QtGui.QStandardItem()
-        item.setText(name)
-        section_item.appendRow(item)
-
-
-def populate_shots_model(model):
-    model.setRowCount(0)
-
-    root = model.invisibleRootItem()
-
-    for shot in data.shots:
+    for shot in sorted(asset_data, key=lambda x: x.section):
         section = shot.section
         name = shot.name
 
@@ -287,11 +265,11 @@ if __name__ == "__main__":
         asset_manager = AMMainWindow()
 
         asset_model = asset_manager.main_widget.asset_info.assets_model
-        populate_assets_model(asset_model)
+        populate_model(asset_model, data.assets)
         asset_manager.main_widget.asset_info.assets_browser.view.expandAll()
 
         shots_model = asset_manager.main_widget.asset_info.shots_model
-        populate_shots_model(shots_model)
+        populate_model(shots_model, data.shots)
         asset_manager.main_widget.asset_info.shots_browser.view.expandAll()
 
         asset_manager.show()
@@ -307,11 +285,11 @@ if not QtWidgets.qApp.instance():
 asset_manager = AMMainWindow()
 
 asset_model = asset_manager.main_widget.asset_info.assets_model
-populate_assets_model(asset_model)
+populate_model(asset_model, data.assets)
 asset_manager.main_widget.asset_info.assets_browser.view.expandAll()
 
 shots_model = asset_manager.main_widget.asset_info.shots_model
-populate_shots_model(shots_model)
+populate_model(shots_model, data.shots)
 asset_manager.main_widget.asset_info.shots_browser.view.expandAll()
 
 asset_manager.show()
