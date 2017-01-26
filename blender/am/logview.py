@@ -101,40 +101,20 @@ class LogBrowser(QtWidgets.QWidget):
         self.proxymodel.setFilterRegExp(regExp)
         self.proxymodel.setPublishFilter(publish_only)
 
+
 class LogViewer(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(LogViewer, self).__init__(parent)
         self.log_browser = LogBrowser()
 
-        model = self.log_browser.model
-        populate(model)
-
         self.setCentralWidget(self.log_browser)
 
         self.setWindowTitle("Log Viewer")
 
-def populate(model):
-    logs = [
-            ('vicken.mavlian', '2017-08-10 12:00PM', 'published asset to be wicked', True),
-            ('cristian.kovacs', '2017-07-02 12:00PM', 'published asset to be less wicked', True),
-            ('cristian.kovacs', '2017-09-01 12:00PM', 'published asset to be bad', False),
-            ('vicken.mavlian', '2017-03-20 12:00PM', 'made wicked again', False),
-            ('vicken.mavlian', '2017-12-12 12:00PM', 'made even better', True),
-            ]
-
-    for user, date, comment, published in logs:
-        model.insertRow(0)
-        model.setData(model.index(0, model.DATE), date)
-        model.setData(model.index(0, model.USER), user)
-        model.setData(model.index(0, model.COMMENT), comment)
-        model.setData(model.index(0, model.PUBLISHED), published)
-
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    logviewer = LogViewer()
-    logviewer.show()
-    logviewer.resize(800,200)
-
-
+    log_viewer = LogViewer()
+    log_viewer.show()
+    log_viewer.resize(800, 200)
 
     sys.exit(app.exec_())

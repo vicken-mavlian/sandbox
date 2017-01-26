@@ -31,7 +31,7 @@ root_path = os.path.dirname(__file__)
 # Dummy data
 
 departments = ['model', 'surface', 'rig']
-categories = ['prop', 'set', 'character', 'material']
+asset_categories = ['prop', 'set', 'character', 'material']
 asset_names = ['cone', 'cube', 'cylinder', 'icosphere', 'sphere', 'suzanne', 'torus']
 comment_text = ['lots of changes. too much to describe', 'made better', 'approved', 'small fix']
 comment_text.append(('this log entry is very long. it contains many things\n'
@@ -42,24 +42,19 @@ comment_text.append(('this log entry is very long. it contains many things\n'
 users = ['vicken.mavlian', 'cristian.kovacs', 'dan.murray']
 
 # tables/data fields for blend file data
-blend_datablocks = ['actions', 'groups', 'materials']
+blend_datablocks = ['actions', 'groups', 'materials', 'scenes']
 Blend = namedtuple('Blend', 'filename datablocks')
 Datablock = namedtuple('Datablock', 'name datas')
 Data = namedtuple('Data', 'name')
 
 Revision = namedtuple('Revision', 'version date user comment publish thumbnail blend')
 
-# tables/data fields for assets
-Asset = namedtuple('Asset', 'name category')
+# tables/data fields for assets and shots
+Asset = namedtuple('Asset', 'name section')
 AssetRevision = namedtuple('AssetRevision', 'asset department revisions')
 assets = []
 asset_revisions = []
 
-# tables/data fields for seqs/shots
-#Sequence = namedtuple('Sequence', 'name shots')
-Shot = namedtuple('Shot', 'name sequence')
-ShotRevision = namedtuple('ShotRevision', 'shot department revisions')
-sequences = []
 shots = []
 shot_revisions = []
 
@@ -82,6 +77,7 @@ def new_blend():
     blend = Blend(filename=filename, datablocks=datablocks)
     return blend
 
+
 def regenerate():
     global assets
     global asset_revisions
@@ -90,7 +86,7 @@ def regenerate():
     asset_revisions = []
 
     for name in asset_names:
-        asset = Asset(name=name, category=random.choice(categories))
+        asset = Asset(name=name, section=random.choice(asset_categories))
         assets.append(asset)
 
     for asset in assets:
@@ -116,12 +112,9 @@ def regenerate():
             asset_revision = AssetRevision(asset=asset, department=department, revisions=revisions)
             asset_revisions.append(asset_revision)
 
-
-    global sequences
     global shots
     global shot_revisions
 
-    sequences = []
     shots = []
     shot_revisions = []
 
@@ -130,11 +123,9 @@ def regenerate():
         name = str(i).zfill(3)
         sequence = random.choice(range(0, 1000, 100))
         sequence = str(sequence).zfill(3)
-        shot = Shot(name=name, sequence=sequence)
+        shot = Asset(name=name, section=sequence)
         shots.append(shot)
         seqs.add(sequence)
-
-    sequences = sorted(list(seqs))
 
     for shot in shots:
         for department in departments:
@@ -157,7 +148,7 @@ def regenerate():
                                     thumbnail=thumbnail, blend=blend)
                 revisions.append(revision)
 
-            shot_revision = ShotRevision(shot=shot, department=department, revisions=revisions)
+            shot_revision = AssetRevision(asset=shot, department=department, revisions=revisions)
             shot_revisions.append(shot_revision)
 
 if __name__ == "__main__":
