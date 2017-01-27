@@ -9,6 +9,26 @@ import data
 
 import os
 
+
+class Thumbnail(QtWidgets.QLabel):
+    clicked = QtCore.pyqtSignal()
+
+    def __init__(self, parent=None):
+        super(Thumbnail, self).__init__(parent=parent)
+        self.setScaledContents(True)
+        self.setFixedSize(QtCore.QSize(128, 128))
+
+    def mouseReleaseEvent(self, event):
+        self.clicked.emit()
+
+
+class CommentBox(QtWidgets.QTextEdit):
+    def __init__(self, parent=None):
+        super(CommentBox, self).__init__(parent=parent)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.setPlaceholderText("Comments")
+
+
 class BlenderView(QtWidgets.QTreeView):
     def __init__(self, parent=None):
         super(BlenderView, self).__init__(parent=parent)
@@ -17,6 +37,7 @@ class BlenderView(QtWidgets.QTreeView):
         self.setEditTriggers(self.NoEditTriggers)
         self.header().setSortIndicator(0, QtCore.Qt.AscendingOrder)
         self.setHeaderHidden(True)
+
 
 class BlenderProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self):
@@ -44,16 +65,10 @@ class VersionSummary(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(VersionSummary, self).__init__(parent)
 
-        self.thumbnail = QtWidgets.QLabel()
-        self.thumbnail.setScaledContents(True)
-        self.thumbnail.setFixedSize(QtCore.QSize(128, 128))
-
-        self.log_browser = logview.LogBrowser()
-
-        self.comment_box = QtWidgets.QTextEdit()
-        self.comment_box.setReadOnly(True)
+        self.thumbnail = Thumbnail()
+        self.comment_box = CommentBox()
         self.comment_box.setFixedHeight(self.thumbnail.height())
-        self.comment_box.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.log_browser = logview.LogBrowser()
 
         layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(0)
@@ -92,6 +107,7 @@ class BlenderBrowser(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(BlenderBrowser, self).__init__(parent)
         self.asset_summary = VersionSummary()
+        self.asset_summary.comment_box.setReadOnly(True)
         self.blender_file = BlenderFile()
 
         self.model = BlenderModel()
@@ -119,9 +135,9 @@ class BlenderBrowser(QtWidgets.QWidget):
 
         self.blender_file.blender_filter.filter_edit.textChanged.connect(self.filterChanged)
 
-        self.setRevision("", "")
+        self.set_revision("", "")
 
-    def setRevision(self, comment, thumbnail):
+    def set_revision(self, comment, thumbnail):
         if thumbnail:
             image_path = os.path.join(data.root_path, 'resources', thumbnail)
         else:
@@ -129,7 +145,6 @@ class BlenderBrowser(QtWidgets.QWidget):
 
         if not os.path.isfile(image_path):
             image_path = os.path.join(data.root_path, 'resources', 'empty.png')
-
 
         image = QtGui.QImage(image_path)
         pixmap = QtGui.QPixmap(image)

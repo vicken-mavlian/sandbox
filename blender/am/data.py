@@ -106,7 +106,8 @@ def regenerate():
                 comment = random.choice(comment_text)
                 publish = str(random.choice(['True', 'False']))
                 thumbnail = asset.name+'.png'
-                revision = Revision(version=version, date=date, user=user, comment=comment, publish=publish, thumbnail=thumbnail, blend=blend)
+                revision = Revision(version=version, date=date, user=user, comment=comment, publish=publish,
+                                    thumbnail=thumbnail, blend=blend)
                 revisions.append(revision)
 
             asset_revision = AssetRevision(asset=asset, department=department, revisions=revisions)

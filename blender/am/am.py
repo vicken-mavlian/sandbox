@@ -197,7 +197,7 @@ class MainWidget(QtWidgets.QWidget):
             comment = log_model.data(log_model.index(row, log_model.COMMENT))
             thumbnail = log_model.data(log_model.index(row, log_model.THUMBNAIL))
 
-        self.blender_browser.setRevision(comment, thumbnail)
+        self.blender_browser.set_revision(comment, thumbnail)
 
 
 
@@ -241,6 +241,9 @@ def populate_model(model, asset_data):
     root = model.invisibleRootItem()
 
     for shot in sorted(asset_data, key=lambda x: x.section):
+    # XXX alternate way to sort the items instead of lambda
+    # from operator import attrgetter
+    # sorted(asset_data, key=attrgetter('section'))
         section = shot.section
         name = shot.name
 
