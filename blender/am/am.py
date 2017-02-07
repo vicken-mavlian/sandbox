@@ -4,13 +4,8 @@ from PyQt5 import QtWidgets
 
 import data
 
-import filterwidget
-
 import assetsview
-import shotsview
-import logview
 import blenderview
-
 
 class AMAssetInfo(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -23,9 +18,9 @@ class AMAssetInfo(QtWidgets.QWidget):
 
         self.assets_browser.view.setModel(self.assets_proxy_model)
 
-        self.shots_browser = shotsview.ShotsBrowser()
-        self.shots_model = shotsview.ShotsModel()
-        self.shots_proxy_model = shotsview.ShotsProxyModel()
+        self.shots_browser = assetsview.AssetsBrowser()
+        self.shots_model = assetsview.AssetsModel()
+        self.shots_proxy_model = assetsview.AssetsProxyModel()
         self.shots_proxy_model.setSourceModel(self.shots_model)
 
         self.shots_browser.view.setModel(self.shots_proxy_model)
@@ -33,12 +28,6 @@ class AMAssetInfo(QtWidgets.QWidget):
         self.shot_assets_tab = QtWidgets.QTabWidget()
         self.shot_assets_tab.addTab(self.assets_browser, "assets")
         self.shot_assets_tab.addTab(self.shots_browser, "shots")
-
-        #self.log_browser = logview.LogBrowser()
-        #splitter = QtWidgets.QSplitter()
-        #splitter.setOrientation(QtCore.Qt.Vertical)
-        #splitter.addWidget(self.shot_assets_tab)
-        #splitter.addWidget(self.log_browser)
 
         layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(0)
@@ -96,8 +85,8 @@ class MainWidget(QtWidgets.QWidget):
         log_model.setRowCount(0)
 
         for shot_revision in data.shot_revisions:
-            correct_shot = (shot_revision.shot.name == shot_name) and \
-                           (shot_revision.shot.sequence == sequence_name)
+            correct_shot = (shot_revision.asset.name == shot_name) and \
+                           (shot_revision.asset.section == sequence_name)
             correct_department = shot_revision.department == department
             if correct_shot and correct_department:
                 for rev in shot_revision.revisions:
@@ -172,21 +161,29 @@ class MainWidget(QtWidgets.QWidget):
                     log_model.setData(log_model.index(0, log_model.THUMBNAIL), thumbnail)
 
     def current_revision_changed(self, event):
-        # TODO hack, assumes both tabs have same dept widget
+        tab_idx = self.asset_info.shot_assets_tab.currentIndex()
+        tab_text = self.asset_info.shot_assets_tab.tabText(tab_idx)
+
+        # TODO this if statement is hokey
+        if tab_text == 'assets':
+            revisions = data.asset_revisions
+        else:
+            revisions = data.shot_revisions
+
+        # TODO assumes both tabs have same dept widget
         browser = self.asset_info.shot_assets_tab.currentWidget()
         view = browser.view
         department = browser.departments.currentText()
 
         index = view.selectionModel().currentIndex()
         index = view.model().mapToSource(index)
-        # TODO Hack, it may not be a proxy model
+        # TODO it may not be a proxy model
         item = view.model().sourceModel().itemFromIndex(index)
         if not item:
             return
         asset_name = item.text()
 
         log_model = self.blender_browser.asset_summary.log_browser.model
-        #log_model = self.asset_info.log_browser.log_view.model().sourceModel()
 
         index = self.blender_browser.asset_summary.log_browser.log_view.selectionModel().currentIndex()
         index = self.blender_browser.asset_summary.log_browser.log_view.model().mapToSource(index)
@@ -200,14 +197,16 @@ class MainWidget(QtWidgets.QWidget):
             comment = log_model.data(log_model.index(row, log_model.COMMENT))
             thumbnail = log_model.data(log_model.index(row, log_model.THUMBNAIL))
 
-        self.blender_browser.setRevision(comment, thumbnail)
+        self.blender_browser.set_revision(comment, thumbnail)
+
+
 
         # TODO all this below should be moved to BlenderBrowser class
 
         model = self.blender_browser.model
         model.setRowCount(0)
 
-        for asset_revision in data.asset_revisions:
+        for asset_revision in revisions:
             correct_asset = asset_revision.asset.name == asset_name
             correct_department = asset_revision.department == department
             if correct_asset and correct_department:
@@ -225,6 +224,7 @@ class MainWidget(QtWidgets.QWidget):
 
         self.blender_browser.blender_file.blender_view.expandAll()
 
+
 class AMMainWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(AMMainWindow, self).__init__(parent)
@@ -235,45 +235,28 @@ class AMMainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Asset Management")
 
 
-def populate_assets_model(model):
+def populate_model(model, asset_data):
     model.setRowCount(0)
 
     root = model.invisibleRootItem()
 
-    for category in data.categories:
-        item = QtGui.QStandardItem()
-        item.setText(category)
-        root.appendRow(item)
-
-    for asset in data.assets:
-        category = asset.category
-        name = asset.name
-        item = QtGui.QStandardItem()
-        item.setText(name)
-
-        # TODO Hack hack hack, getting first item in list. so bad.
-        section_item = model.findItems(category)[0]
-        section_item.appendRow(item)
-
-
-def populate_shots_model(model):
-    model.setRowCount(0)
-
-    root = model.invisibleRootItem()
-
-    for sequence in data.sequences:
-        item = QtGui.QStandardItem()
-        item.setText(sequence)
-        root.appendRow(item)
-
-    for shot in data.shots:
-        sequence = shot.sequence
+    for shot in sorted(asset_data, key=lambda x: x.section):
+    # XXX alternate way to sort the items instead of lambda
+    # from operator import attrgetter
+    # sorted(asset_data, key=attrgetter('section'))
+        section = shot.section
         name = shot.name
+
+        section_items = model.findItems(section)
+        if section_items:
+            section_item = section_items[0]
+        else:
+            section_item = QtGui.QStandardItem()
+            section_item.setText(section)
+            root.appendRow(section_item)
+
         item = QtGui.QStandardItem()
         item.setText(name)
-
-        # TODO Hack hack hack, getting first item in list. so bad.
-        section_item = model.findItems(sequence)[0]
         section_item.appendRow(item)
 
 if __name__ == "__main__":
@@ -285,17 +268,15 @@ if __name__ == "__main__":
         asset_manager = AMMainWindow()
 
         asset_model = asset_manager.main_widget.asset_info.assets_model
-        populate_assets_model(asset_model)
+        populate_model(asset_model, data.assets)
         asset_manager.main_widget.asset_info.assets_browser.view.expandAll()
 
         shots_model = asset_manager.main_widget.asset_info.shots_model
-        populate_shots_model(shots_model)
+        populate_model(shots_model, data.shots)
         asset_manager.main_widget.asset_info.shots_browser.view.expandAll()
-
 
         asset_manager.show()
         sys.exit(app.exec_())
-
 
 import sys
 import importlib
@@ -307,11 +288,11 @@ if not QtWidgets.qApp.instance():
 asset_manager = AMMainWindow()
 
 asset_model = asset_manager.main_widget.asset_info.assets_model
-populate_assets_model(asset_model)
+populate_model(asset_model, data.assets)
 asset_manager.main_widget.asset_info.assets_browser.view.expandAll()
 
 shots_model = asset_manager.main_widget.asset_info.shots_model
-populate_shots_model(shots_model)
+populate_model(shots_model, data.shots)
 asset_manager.main_widget.asset_info.shots_browser.view.expandAll()
 
 asset_manager.show()

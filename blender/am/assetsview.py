@@ -6,6 +6,7 @@ import data
 
 import filterwidget
 
+
 class AssetsModel(QtGui.QStandardItemModel):
     def __init__(self):
         super(AssetsModel, self).__init__()
@@ -48,6 +49,7 @@ class AssetsProxyModel(QtCore.QSortFilterProxyModel):
 
         return super(AssetsProxyModel, self).filterAcceptsRow(sourceRow, sourceParent)
 
+
 class AssetsBrowser(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(AssetsBrowser, self).__init__(parent)
@@ -67,13 +69,13 @@ class AssetsBrowser(QtWidgets.QWidget):
 
         self.setLayout(layout)
 
-        self.filter_widget.filter_edit.textChanged.connect(self.filterChanged)
-        self.departments.currentIndexChanged.connect(self.departmentChanged)
+        self.filter_widget.filter_edit.textChanged.connect(self.filter_changed)
+        self.departments.currentIndexChanged.connect(self.department_changed)
 
-    def departmentChanged(self, event):
+    def department_changed(self, event):
         pass
 
-    def filterChanged(self, event):
+    def filter_changed(self, event):
         # TODO: Hack, the model may not be a proxy model. Probably requires refactoring
         text = self.filter_widget.filter_edit.text()
         syntax = QtCore.QRegExp.PatternSyntax(QtCore.QRegExp.Wildcard)
